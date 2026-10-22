@@ -8,9 +8,7 @@ plugins {
 android {
     namespace = "com.example.finstream"
     compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
+        version = release(37)
     }
 
     defaultConfig {
@@ -86,5 +84,9 @@ dependencies {
     //Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
+
+    //lifecycle-aware state collection
+    implementation(libs.androidx.lifecycle.runtime.compose)
 
 }

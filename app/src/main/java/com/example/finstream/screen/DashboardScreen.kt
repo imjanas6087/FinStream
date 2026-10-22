@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,6 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,47 +42,25 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import coil3.compose.AsyncImage
 import com.example.finstream.BottomNavigation.BottomNavigation
 import com.example.finstream.R
 import com.example.finstream.data.DashBoardDataBOItem
 import com.example.finstream.ui.theme.FinStreamTheme
+import com.example.finstream.viewModel.NetworkResponse
+import com.example.finstream.viewModel.ViewModuleCoinList
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun DashboardScreen(onAssetClick: (String) -> Unit) {
-    val navController = rememberNavController()
-    val mockAssets = listOf(
-        DashBoardDataBOItem(
-            ath = 126080.0,
-            ath_change_percentage = -33.00412,
-            ath_date = "2025-10-06T10:57:42.000Z",
-            atl = 67.81,
-            atl_change_percentage = 124468.0129,
-            atl_date = "2013-07-05T16:00:00.000Z",
-            circulating_supply = 20098843.0,
-            current_price = 84468.0,
-            fully_diluted_valuation = 1697822263429L,
-            high_24h = 84808.0,
-            id = "bitcoin",
-            image = "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png?1696501400",
-            last_updated = "2026-10-21T19:32:53.000Z",
-            low_24h = 82458.0,
-            market_cap = 1697715579936L,
-            market_cap_change_24h = 41396613533.0,
-            market_cap_change_percentage_24h = 2.49931,
-            market_cap_rank = 1,
-            max_supply = 21000000.0,
-            name = "Bitcoin",
-            price_change_24h = 2059.65,
-            price_change_percentage_24h = 2.46677,
-            roi = null,
-            symbol = "btc",
-            total_supply = 20100106.0,
-            total_volume = 31352244811L
-        )
-    )
+fun DashboardScreen(
+    navController: NavHostController,
+    onAssetClick: (String) -> Unit,
+    viewModel: ViewModuleCoinList = hiltViewModel()
+) {
+    val coinsState by viewModel.coinListDetails.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -135,11 +117,46 @@ fun DashboardScreen(onAssetClick: (String) -> Unit) {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(mockAssets) { asset ->
-                    AssetRow(asset = asset, onClick = { onAssetClick(asset.symbol) })
+            when (val state = coinsState) {
+                is NetworkResponse.Idle,
+                is NetworkResponse.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                is NetworkResponse.Error -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = state.message,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(onClick = { viewModel.getTheCoinDetails() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+
+                is NetworkResponse.Success -> {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(state.data) { asset ->
+                            AssetRow(
+                                asset = asset,
+                                onClick = { onAssetClick(asset.symbol) }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -173,7 +190,7 @@ fun AssetRow(asset: DashBoardDataBOItem, onClick: () -> Unit) {
             placeholder = painterResource(R.drawable.ic_coin_placeholder),
             error = painterResource(R.drawable.ic_coin_placeholder),
             modifier = Modifier
-                .defaultMinSize(minHeight = 40.dp)
+                .size(40.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         )
@@ -228,8 +245,6 @@ fun AssetRow(asset: DashBoardDataBOItem, onClick: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 fun PreviewScreen() {
-    FinStreamTheme {
-        DashboardScreen({})
-    }
+
 }
 
